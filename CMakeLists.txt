@@ -113,7 +113,9 @@ set(headers
 	include/utils/Setting.h
 	include/utils/Trampoline.h
 	include/utils/type_name.h
+	include/GFxDisplayObject.h
 	include/GFxMoviePatcher.h
+	include/GFxObject.h
 	include/Hooks.h
 	include/pch.h
 	include/Plugin.h

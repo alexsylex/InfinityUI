@@ -2,6 +2,8 @@
 
 #include "GFxMoviePatcher.h"
 
+#include "GFxDisplayObject.h"
+
 namespace IUI
 {
 	void PatchGFxMovie(RE::GFxMovieView* a_view, float a_deltaT, std::uint32_t a_frameCatchUpCount)
@@ -12,15 +14,15 @@ namespace IUI
 
 		a_view->Advance(a_deltaT, a_frameCatchUpCount);
 
-		GFxMoviePatcher moviePatcher(a_view, a_view->GetMovieDef()->GetFileURL());
+		GFxMoviePatcher moviePatcher{ a_view, movieUrl };
 
-		if (int loadedSwfPatches = moviePatcher.LoadAvailablePatches()) 
+		if (int loadedSwfPatches = moviePatcher.LoadAvailablePatches())
 		{
 			std::string fmtMessage = "Loaded {} swf patch";
 			fmtMessage += loadedSwfPatches > 1 ? "es" : "";
 			fmtMessage += " for {}";
 
-			logger::info(fmtMessage, loadedSwfPatches, moviePatcher.GetMovieFilename());
+			logger::info(fmtMessage, loadedSwfPatches, moviePatcher.GetMovieBasename());
 			logger::flush();
 		}
 	}

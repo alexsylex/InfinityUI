@@ -54,7 +54,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_s
 		return false;
 	}
 
-	logger::info("{} {}.{}", plugin.name, plugin.versionMajor, plugin.versionMinor);
+	logger::info("Loading {} {}.{}...", plugin.name, plugin.versionMajor, plugin.versionMinor);
 
 	SKSE::Init(a_skse);
 
@@ -77,7 +77,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_s
 	IUI::InstallHooks();
 
 	logger::set_level(logger::level::info, logger::level::info);
-	logger::info("{} succesfully loaded", plugin.name);
+	logger::info("Succesfully loaded!");
 
 	logger::set_level(loggerLevel, loggerLevel);
 
