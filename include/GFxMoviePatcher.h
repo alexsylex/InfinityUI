@@ -1,19 +1,12 @@
 #pragma once
 
-#include "GFxDisplayObject.h"
+#include "FullAPI.h"
 
 namespace IUI
 {
 	class GFxMoviePatcher
 	{
 	public:
-
-		enum Status
-		{
-			kPreLoad,
-			kPosLoad,
-			kAbortLoad
-		};
 
 		GFxMoviePatcher(RE::GFxMovieView* a_movieView, const std::string_view& a_movieUrl)
 		: movieView{ a_movieView }, movieDir{ a_movieUrl.substr(0, a_movieUrl.rfind('/') + 1) },
@@ -29,12 +22,6 @@ namespace IUI
 		void CreateMemberFrom(const std::string& a_movieFile);
 		void ReplaceMemberWith(const GFxDisplayObject& a_originalMember, const std::string& a_movieFile);
 		void AbortReplaceMemberWith(const RE::GFxValue& a_originalMember, const std::string& a_movieFile);
-
-		template<typename T>
-		void BroadcastStatusMessage(Status a_status, const T& a_payload)
-		{
-			SKSE::GetMessagingInterface()->Dispatch(a_status, &const_cast<T&>(a_payload), static_cast<std::uint32_t>(sizeof(T)), nullptr);
-		}
 
 		std::string GetMemberToReplacePath(const std::string& a_movieFile)
 		{

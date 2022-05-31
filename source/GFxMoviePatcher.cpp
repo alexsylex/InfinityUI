@@ -80,19 +80,17 @@ namespace IUI
 		GFxDisplayObject patch = _root.CreateEmptyMovieClip(std::string("Patch") + std::to_string(loadCount));
 		patch.LoadMovie(a_movieFile);
 
-		char message[] = "create";
-		BroadcastStatusMessage(Status::kPosLoad, message);
+		API::DispatchMessage(API::PostLoadMessage{ "create" });
 	}
 
 	void GFxMoviePatcher::ReplaceMemberWith(const GFxDisplayObject& a_originalMember, const std::string& a_movieFile)
 	{
-		BroadcastStatusMessage(Status::kPreLoad, a_originalMember);
+		API::DispatchMessage(API::PreLoadMessage{ &a_originalMember });
 
 		GFxDisplayObject patch = _root.CreateEmptyMovieClip(std::string("Patch") + std::to_string(loadCount));
 		patch.LoadMovie(a_movieFile);
 
-		char message[] = "replace";
-		BroadcastStatusMessage(Status::kPosLoad, message);
+		API::DispatchMessage(API::PostLoadMessage{ "replace" });
 	}
 
 	void GFxMoviePatcher::AbortReplaceMemberWith(const RE::GFxValue& a_originalMember, const std::string& a_movieFile)
@@ -100,6 +98,6 @@ namespace IUI
 		logger::warn("{} exists in the movie, but it is not a DisplayObject. Aborting replacement for {}", 
 					 a_originalMember.ToString(), a_movieFile);
 
-		BroadcastStatusMessage(Status::kAbortLoad, a_originalMember);
+		API::DispatchMessage(API::AbortLoadMessage{ &a_originalMember });
 	}
 }
