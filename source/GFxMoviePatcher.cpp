@@ -41,31 +41,53 @@ namespace IUI
 				{
 					std::string movieFile = std::filesystem::relative(currentPath, rootPath).string().c_str();
 
-					std::string memberToReplacePath = GetMemberToReplacePath(movieFile);
-
-					if (!memberToReplacePath.empty()) 
+					std::string parentPath = GetMemberParentPath(movieFile);
+					if (!parentPath.empty()) 
 					{
-						logger::debug("{}", currentPath.string().c_str());
-						logger::flush();
-
-						RE::GFxValue member;
-						if (movieView->GetVariable(&member, memberToReplacePath.c_str())) 
+						RE::GFxValue parentValue;
+						if (movieView->GetVariable(&parentValue, parentPath.c_str()))
 						{
-							if (member.IsDisplayObject())
+							if (parentValue.IsDisplayObject()) 
 							{
-								ReplaceMemberWith(reinterpret_cast<GFxDisplayObject&>(member), movieFile);
+								GFxDisplayObject parent = parentValue;
 
-								loadCount++;
-							} 
-							else
-							{
-								AbortReplaceMemberWith(member, movieFile);
+								std::string memberPath = GetMemberPath(movieFile);
+								if (!memberPath.empty()) 
+								{
+									logger::debug("{}", currentPath.string().c_str());
+									logger::flush();
+
+									RE::GFxValue memberValue;
+									if (movieView->GetVariable(&memberValue, memberPath.c_str()))
+									{
+										if (memberValue.IsDisplayObject())
+										{
+											GFxDisplayObject member = memberValue;
+
+											ReplaceMemberWith(member, parent, movieFile);
+
+											loadCount++;
+										}
+										else 
+										{
+											AbortReplaceMemberWith(memberValue, movieFile);
+										}
+									}
+									else 
+									{
+										CreateMemberFrom(parent, movieFile);
+										loadCount++;
+									}
+								}
+
+								GFxMemberVisitor memberVisitor;
+
+								memberVisitor.VisitMembersOf(parent);
 							}
-						}
-						else 
-						{
-							CreateMemberFrom(movieFile);
-							loadCount++;
+							else 
+							{
+								AbortReplaceMemberWith(parentValue, movieFile);
+							}
 						}
 					}
 				}
@@ -75,29 +97,34 @@ namespace IUI
 		return loadCount;
 	}
 
-	void GFxMoviePatcher::CreateMemberFrom(const std::string& a_movieFile)
+	void GFxMoviePatcher::CreateMemberFrom(GFxDisplayObject& a_parent, const std::string& a_movieFile)
 	{
-		GFxDisplayObject patch = _root.CreateEmptyMovieClip(std::string("Patch") + std::to_string(loadCount));
-		patch.LoadMovie(a_movieFile);
+		std::string memberName = GetMemberName(a_movieFile);
 
-		API::DispatchMessage(API::PostLoadMessage{ "create" });
+		GFxDisplayObject newDisplayObject = a_parent.CreateEmptyMovieClip(memberName);
+		newDisplayObject.LoadMovie(a_movieFile);
+
+		// Actions after loading the movieclip
+		API::DispatchMessage(API::PostLoadMessage{ newDisplayObject });
 	}
 
-	void GFxMoviePatcher::ReplaceMemberWith(const GFxDisplayObject& a_originalMember, const std::string& a_movieFile)
+	void GFxMoviePatcher::ReplaceMemberWith(GFxDisplayObject& a_originalMember, GFxDisplayObject& a_parent, const std::string& a_movieFile)
 	{
-		API::DispatchMessage(API::PreLoadMessage{ &a_originalMember });
+		std::string memberName = GetMemberName(a_movieFile);
 
-		GFxDisplayObject patch = _root.CreateEmptyMovieClip(std::string("Patch") + std::to_string(loadCount));
-		patch.LoadMovie(a_movieFile);
+		// Last chance to retrieve info before removing the movieclip
+		API::DispatchMessage(API::PreLoadMessage{ a_originalMember });
 
-		API::DispatchMessage(API::PostLoadMessage{ "replace" });
+		a_originalMember.RemoveMovieClip();
+
+		CreateMemberFrom(a_parent, a_movieFile);
 	}
 
-	void GFxMoviePatcher::AbortReplaceMemberWith(const RE::GFxValue& a_originalMember, const std::string& a_movieFile)
+	void GFxMoviePatcher::AbortReplaceMemberWith(RE::GFxValue& a_originalMember, const std::string& a_movieFile)
 	{
 		logger::warn("{} exists in the movie, but it is not a DisplayObject. Aborting replacement for {}", 
 					 a_originalMember.ToString(), a_movieFile);
 
-		API::DispatchMessage(API::AbortLoadMessage{ &a_originalMember });
+		API::DispatchMessage(API::AbortLoadMessage{ a_originalMember });
 	}
 }

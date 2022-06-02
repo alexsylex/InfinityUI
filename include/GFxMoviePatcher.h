@@ -19,26 +19,55 @@ namespace IUI
 
 	private:
 
-		void CreateMemberFrom(const std::string& a_movieFile);
-		void ReplaceMemberWith(const GFxDisplayObject& a_originalMember, const std::string& a_movieFile);
-		void AbortReplaceMemberWith(const RE::GFxValue& a_originalMember, const std::string& a_movieFile);
+		void CreateMemberFrom(GFxDisplayObject& a_parent, const std::string& a_movieFile);
 
-		std::string GetMemberToReplacePath(const std::string& a_movieFile)
+		void ReplaceMemberWith(GFxDisplayObject& a_originalMember, GFxDisplayObject& a_parent, const std::string& a_movieFile);
+
+		void AbortReplaceMemberWith(RE::GFxValue& a_originalMember, const std::string& a_movieFile);
+
+		std::string GetMemberPath(const std::string& a_movieFile)
 		{
-			std::string memberToReplacePath;
+			std::string memberPath;
 
-			std::size_t movieFilenameEnd = a_movieFile.find(".swf", a_movieFile.size() - 4);
+			std::size_t movieFilenameEnd = a_movieFile.rfind(".swf");
 			if (movieFilenameEnd != std::string::npos) 
 			{
 				std::size_t movieFilenameStart = a_movieFile.find("\\") + 1;
 				std::size_t movieFilenameLen = movieFilenameEnd - movieFilenameStart;
 
-				memberToReplacePath = a_movieFile.substr(movieFilenameStart, movieFilenameLen);
+				memberPath = a_movieFile.substr(movieFilenameStart, movieFilenameLen);
 
-				std::replace(memberToReplacePath.begin(), memberToReplacePath.end(), '\\', '.');
+				std::replace(memberPath.begin(), memberPath.end(), '\\', '.');
 			}
 
-			return memberToReplacePath;
+			return memberPath;
+		}
+
+		std::string GetMemberName(const std::string& a_movieFile)
+		{
+			std::string memberName;
+
+			std::size_t movieFilenameEnd = a_movieFile.rfind(".swf");
+			if (movieFilenameEnd != std::string::npos) 
+			{
+				std::size_t backslashPos = a_movieFile.rfind("\\");
+
+				std::size_t movieFilenameStart = backslashPos != std::string::npos ? backslashPos + 1 : 0;
+				std::size_t movieFilenameLen = movieFilenameEnd - movieFilenameStart;
+
+				memberName = a_movieFile.substr(movieFilenameStart, movieFilenameLen);
+			}
+
+			return memberName;
+		}
+
+		std::string GetMemberParentPath(const std::string& a_movieFile)
+		{
+			std::string memberPath = GetMemberPath(a_movieFile);
+
+			std::size_t dotPos = memberPath.rfind(".");
+
+			return dotPos != std::string::npos ? memberPath.substr(0, dotPos) : "_root";
 		}
 
 		RE::GFxMovieView* movieView;

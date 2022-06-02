@@ -16,21 +16,21 @@ namespace IUI::API
 	{
 		static constexpr inline Status type = Status::kPreLoad;
 
-		const GFxDisplayObject* const originalDisplayObject;
+		GFxDisplayObject& originalDisplayObject;
 	};
 
 	struct PostLoadMessage
 	{
 		static constexpr inline Status type = Status::kPostLoad;
 
-		const char* payload;
+		GFxDisplayObject& newDisplayObject;
 	};
 
 	struct AbortLoadMessage
 	{
 		static constexpr inline Status type = Status::kAbortLoad;
 
-		const RE::GFxValue* const originalValue;
+		RE::GFxValue& originalValue;
 	};
 
 	template <typename Message>
