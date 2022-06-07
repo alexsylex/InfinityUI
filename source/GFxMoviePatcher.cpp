@@ -6,16 +6,25 @@
 
 namespace IUI
 {
-	int GFxMoviePatcher::LoadAvailablePatches()
+	GFxMoviePatcher::GFxMoviePatcher(RE::GFxMovieView* a_movieView)
+	:	movieView{ a_movieView }
 	{
+		logger::debug("Detected GFx movie load from {}",GetContextMovieUrl());
+		logger::flush();
+	}
+
+	void GFxMoviePatcher::LoadAvailablePatches() const&&
+	{
+		int loadCount = 0;
+
 		std::filesystem::path rootPath = std::filesystem::current_path().append("Data\\Interface");
-		if (movieDir.find("Interface/Exported/") != std::string_view::npos) 
+		if (GetContextMovieDir().find("Interface/Exported/") != std::string_view::npos) 
 		{
 			rootPath.append("Exported");
 		}
 
 		std::filesystem::path startPath = rootPath;
-		startPath.append(GetMovieBasename());
+		startPath.append(GetContextMovieBasename());
 
 		if (std::filesystem::exists(startPath))
 		{
@@ -41,7 +50,7 @@ namespace IUI
 				{
 					std::string movieFile = std::filesystem::relative(currentPath, rootPath).string().c_str();
 
-					std::string parentPath = GetMemberParentPath(movieFile);
+					std::string parentPath = GetPatchedMemberParentPath(movieFile);
 					if (!parentPath.empty()) 
 					{
 						RE::GFxValue parentValue;
@@ -51,7 +60,7 @@ namespace IUI
 							{
 								GFxDisplayObject parent = parentValue;
 
-								std::string memberPath = GetMemberPath(movieFile);
+								std::string memberPath = GetPatchedMemberPath(movieFile);
 								if (!memberPath.empty()) 
 								{
 									logger::debug("{}", currentPath.string().c_str());
@@ -80,9 +89,8 @@ namespace IUI
 									}
 								}
 
-								GFxMemberVisitor memberVisitor;
-
-								memberVisitor.VisitMembersOf(parent);
+								//GFxMemberVisitor memberVisitor;
+								//memberVisitor.VisitMembersOf(parent);
 							}
 							else 
 							{
@@ -94,37 +102,49 @@ namespace IUI
 			}
 		}
 
-		return loadCount;
+		if (loadCount) 
+		{
+			std::string fmtMessage = "Loaded {} swf patch";
+			fmtMessage += loadCount > 1 ? "es" : "";
+			fmtMessage += " for {}";
+
+			logger::info(fmtMessage, loadCount, GetContextMovieUrl());
+		}
+		else
+		{
+			logger::debug("No swf patches loaded for {}", GetContextMovieUrl());
+		}
+		logger::flush();
 	}
 
-	void GFxMoviePatcher::CreateMemberFrom(GFxDisplayObject& a_parent, const std::string& a_movieFile)
+	void GFxMoviePatcher::CreateMemberFrom(GFxDisplayObject& a_parent, const std::string& a_movieFile) const
 	{
-		std::string memberName = GetMemberName(a_movieFile);
+		std::string memberName = GetPatchedMemberName(a_movieFile);
 
 		GFxDisplayObject newDisplayObject = a_parent.CreateEmptyMovieClip(memberName);
 		newDisplayObject.LoadMovie(a_movieFile);
 
 		// Actions after loading the movieclip
-		API::DispatchMessage(API::PostLoadMessage{ newDisplayObject });
+		API::DispatchMessage(API::PostLoadMessage{ GetContextMovieUrl(), newDisplayObject });
 	}
 
-	void GFxMoviePatcher::ReplaceMemberWith(GFxDisplayObject& a_originalMember, GFxDisplayObject& a_parent, const std::string& a_movieFile)
+	void GFxMoviePatcher::ReplaceMemberWith(GFxDisplayObject& a_originalMember, GFxDisplayObject& a_parent, const std::string& a_movieFile) const
 	{
-		std::string memberName = GetMemberName(a_movieFile);
+		std::string memberName = GetPatchedMemberName(a_movieFile);
 
 		// Last chance to retrieve info before removing the movieclip
-		API::DispatchMessage(API::PreLoadMessage{ a_originalMember });
+		API::DispatchMessage(API::PreLoadMessage{ GetContextMovieUrl(), a_originalMember });
 
 		a_originalMember.RemoveMovieClip();
 
 		CreateMemberFrom(a_parent, a_movieFile);
 	}
 
-	void GFxMoviePatcher::AbortReplaceMemberWith(RE::GFxValue& a_originalMember, const std::string& a_movieFile)
+	void GFxMoviePatcher::AbortReplaceMemberWith(RE::GFxValue& a_originalMember, const std::string& a_movieFile) const
 	{
 		logger::warn("{} exists in the movie, but it is not a DisplayObject. Aborting replacement for {}", 
 					 a_originalMember.ToString(), a_movieFile);
 
-		API::DispatchMessage(API::AbortLoadMessage{ a_originalMember });
+		API::DispatchMessage(API::AbortLoadMessage{ GetContextMovieUrl(), a_originalMember });
 	}
 }

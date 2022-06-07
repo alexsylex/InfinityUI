@@ -8,24 +8,33 @@ namespace IUI
 	{
 	public:
 
-		GFxMoviePatcher(RE::GFxMovieView* a_movieView, const std::string_view& a_movieUrl)
-		: movieView{ a_movieView }, movieDir{ a_movieUrl.substr(0, a_movieUrl.rfind('/') + 1) },
-		  movieFilename{ a_movieUrl.substr(a_movieUrl.rfind('/') + 1) }
-		{ }
+		GFxMoviePatcher(RE::GFxMovieView* a_movieView);
 
-		std::string_view GetMovieBasename() const { return movieFilename.substr(0, movieFilename.find('.')); }
-
-		int LoadAvailablePatches();
+		void LoadAvailablePatches() const&&;
 
 	private:
 
-		void CreateMemberFrom(GFxDisplayObject& a_parent, const std::string& a_movieFile);
+		std::string_view GetContextMovieUrl() const { return movieView->GetMovieDef()->GetFileURL(); }
 
-		void ReplaceMemberWith(GFxDisplayObject& a_originalMember, GFxDisplayObject& a_parent, const std::string& a_movieFile);
+		std::string_view GetContextMovieDir() const
+		{
+			std::string_view movieUrl = GetContextMovieUrl();
+			return movieUrl.substr(0, movieUrl.rfind('/') + 1);
+		}
 
-		void AbortReplaceMemberWith(RE::GFxValue& a_originalMember, const std::string& a_movieFile);
+		std::string_view GetContextMovieFileName() const
+		{
+			std::string_view movieUrl = GetContextMovieUrl();
+			return movieUrl.substr(movieUrl.rfind('/') + 1);
+		}
 
-		std::string GetMemberPath(const std::string& a_movieFile)
+		std::string_view GetContextMovieBasename() const
+		{
+			std::string_view movieFilename = GetContextMovieFileName();
+			return movieFilename.substr(0, movieFilename.find('.'));
+		}
+
+		std::string GetPatchedMemberPath(const std::string& a_movieFile) const
 		{
 			std::string memberPath;
 
@@ -43,7 +52,7 @@ namespace IUI
 			return memberPath;
 		}
 
-		std::string GetMemberName(const std::string& a_movieFile)
+		std::string GetPatchedMemberName(const std::string& a_movieFile) const
 		{
 			std::string memberName;
 
@@ -61,19 +70,21 @@ namespace IUI
 			return memberName;
 		}
 
-		std::string GetMemberParentPath(const std::string& a_movieFile)
+		std::string GetPatchedMemberParentPath(const std::string& a_movieFile) const
 		{
-			std::string memberPath = GetMemberPath(a_movieFile);
+			std::string memberPath = GetPatchedMemberPath(a_movieFile);
 
 			std::size_t dotPos = memberPath.rfind(".");
 
 			return dotPos != std::string::npos ? memberPath.substr(0, dotPos) : "_root";
 		}
 
+		void CreateMemberFrom(GFxDisplayObject& a_parent, const std::string& a_movieFile) const;
+
+		void ReplaceMemberWith(GFxDisplayObject& a_originalMember, GFxDisplayObject& a_parent, const std::string& a_movieFile) const;
+
+		void AbortReplaceMemberWith(RE::GFxValue& a_originalMember, const std::string& a_movieFile) const;
+
 		RE::GFxMovieView* movieView;
-		const std::string_view movieDir;
-		const std::string_view movieFilename;
-		GFxDisplayObject _root{ movieView, "_root" };
-		int loadCount = 0;
 	};
 }

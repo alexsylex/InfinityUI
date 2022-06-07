@@ -1,29 +1,11 @@
-#include "utils/Logger.h"
-
 #include "GFxMoviePatcher.h"
-
-#include "GFxDisplayObject.h"
 
 namespace IUI
 {
-	void PatchGFxMovie(RE::GFxMovieView* a_view, float a_deltaT, std::uint32_t a_frameCatchUpCount)
+	void PatchGFxMovie(RE::GFxMovieView* a_movieView, float a_deltaT, std::uint32_t a_frameCatchUpCount)
 	{
-		std::string_view movieUrl = a_view->GetMovieDef()->GetFileURL();
+		a_movieView->Advance(a_deltaT, a_frameCatchUpCount);
 
-		logger::trace("Detected GFx movie load from {}", movieUrl);
-
-		a_view->Advance(a_deltaT, a_frameCatchUpCount);
-
-		GFxMoviePatcher moviePatcher{ a_view, movieUrl };
-
-		if (int loadedSwfPatches = moviePatcher.LoadAvailablePatches())
-		{
-			std::string fmtMessage = "Loaded {} swf patch";
-			fmtMessage += loadedSwfPatches > 1 ? "es" : "";
-			fmtMessage += " for {}";
-
-			logger::info(fmtMessage, loadedSwfPatches, moviePatcher.GetMovieBasename());
-			logger::flush();
-		}
+		GFxMoviePatcher{ a_movieView }.LoadAvailablePatches();
 	}
 }
