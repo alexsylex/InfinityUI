@@ -1,3 +1,5 @@
+#include "Hooks.h"
+
 #include "GFxMoviePatcher.h"
 
 namespace IUI

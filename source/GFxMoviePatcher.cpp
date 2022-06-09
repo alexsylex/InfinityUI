@@ -18,7 +18,7 @@ namespace IUI
 		int loadCount = 0;
 
 		std::filesystem::path rootPath = std::filesystem::current_path().append("Data\\Interface");
-		if (GetContextMovieDir().find("Interface/Exported/") != std::string_view::npos) 
+		if (GetContextMovieDir().find("Interface/Exported/") != std::string_view::npos)
 		{
 			rootPath.append("Exported");
 		}
@@ -28,6 +28,9 @@ namespace IUI
 
 		if (std::filesystem::exists(startPath))
 		{
+			// Actions before we start loading movieclip patches
+			API::DispatchMessage(API::StartLoadMessage{ movieView, GetContextMovieUrl() });
+
 			// Non-recursive Depth-First Search to traverse all nodes
 			// Reference: https://en.wikipedia.org/wiki/Depth-first_search
 			std::stack<std::filesystem::path> stack;
@@ -100,6 +103,9 @@ namespace IUI
 					}
 				}
 			}
+
+			// Actions after loading all movieclip patches
+			API::DispatchMessage(API::FinishLoadMessage{ movieView, GetContextMovieUrl(), loadCount });
 		}
 
 		if (loadCount) 
@@ -125,7 +131,7 @@ namespace IUI
 		newDisplayObject.LoadMovie(a_movieFile);
 
 		// Actions after loading the movieclip
-		API::DispatchMessage(API::PostLoadMessage{ GetContextMovieUrl(), newDisplayObject });
+		API::DispatchMessage(API::PostPatchMessage{ movieView, GetContextMovieUrl(), newDisplayObject });
 	}
 
 	void GFxMoviePatcher::ReplaceMemberWith(GFxDisplayObject& a_originalMember, GFxDisplayObject& a_parent, const std::string& a_movieFile) const
@@ -133,7 +139,7 @@ namespace IUI
 		std::string memberName = GetPatchedMemberName(a_movieFile);
 
 		// Last chance to retrieve info before removing the movieclip
-		API::DispatchMessage(API::PreLoadMessage{ GetContextMovieUrl(), a_originalMember });
+		API::DispatchMessage(API::PreReplaceMessage{ movieView, GetContextMovieUrl(), a_originalMember });
 
 		a_originalMember.RemoveMovieClip();
 
@@ -145,6 +151,6 @@ namespace IUI
 		logger::warn("{} exists in the movie, but it is not a DisplayObject. Aborting replacement for {}", 
 					 a_originalMember.ToString(), a_movieFile);
 
-		API::DispatchMessage(API::AbortLoadMessage{ GetContextMovieUrl(), a_originalMember });
+		API::DispatchMessage(API::AbortPatchMessage{ movieView, GetContextMovieUrl(), a_originalMember });
 	}
 }
