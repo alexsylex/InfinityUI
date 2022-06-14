@@ -126,7 +126,7 @@ set(headers
 
 set(sources
 	source/RE/G/GFxValue.cpp
-	source/RE/G/GFxVisitors.cpp
+	source/utils/GFxVisitors.cpp
 	source/utils/INISettingCollection.cpp
 	source/utils/Logger.cpp
 	source/GFxMoviePatcher.cpp
