@@ -1,6 +1,7 @@
 #pragma once
 
 #include "FullAPI.h"
+#include "utils/GFxDisplayObject.h"
 
 namespace IUI
 {

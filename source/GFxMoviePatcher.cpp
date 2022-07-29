@@ -110,15 +110,11 @@ namespace IUI
 
 		if (loadCount) 
 		{
-			std::string fmtMessage = "Loaded {} swf patch";
-			fmtMessage += loadCount > 1 ? "es" : "";
-			fmtMessage += " for {}";
-
-			logger::info(fmtMessage, loadCount, GetContextMovieUrl());
+			logger::info("Patches loaded for {}: {}", GetContextMovieUrl(), loadCount);
 		}
 		else
 		{
-			logger::debug("No swf patches loaded for {}", GetContextMovieUrl());
+			logger::debug("Patches loaded for {}: 0", GetContextMovieUrl());
 		}
 		logger::flush();
 	}
@@ -129,6 +125,7 @@ namespace IUI
 
 		GFxDisplayObject newDisplayObject = a_parent.CreateEmptyMovieClip(memberName);
 		newDisplayObject.LoadMovie(a_movieFile);
+		movieView->Advance(0.0F);
 
 		// Actions after loading the movieclip
 		API::DispatchMessage(API::PostPatchMessage{ movieView, GetContextMovieUrl(), newDisplayObject });
@@ -141,7 +138,16 @@ namespace IUI
 		// Last chance to retrieve info before removing the movieclip
 		API::DispatchMessage(API::PreReplaceMessage{ movieView, GetContextMovieUrl(), a_originalMember });
 
+		// MovieClip.removeMovieClip() does not remove a movie clip assigned
+		// to a negative depth value. Movie clips created in the authoring tool
+		// are assigned negative depth values by default. To remove a movie clip
+		// that is assigned to a negative depth value, first use the MovieClip.swapDepths()
+		// method to move the movie clip to a positive depth value.
+		// Reference: http://homepage.divms.uiowa.edu/~slonnegr/flash/ActionScript2Reference.pdf#page=917
+		a_originalMember.SwapDepths(1);
+		movieView->Advance(0.0F);
 		a_originalMember.RemoveMovieClip();
+		movieView->Advance(0.0F);
 
 		CreateMemberFrom(a_parent, a_movieFile);
 	}

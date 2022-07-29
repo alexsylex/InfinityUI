@@ -106,7 +106,10 @@ find_package(spdlog REQUIRED CONFIG)
 
 set(headers
 	include/RE/G/GFxValue.h
+	include/utils/GFxArray.h
+	include/utils/GFxDisplayObject.h
 	include/utils/GFxFunction.h
+	include/utils/GFxObject.h
 	include/utils/GFxVisitors.h
 	include/utils/INISettingCollection.h
 	include/utils/Logger.h
@@ -115,10 +118,7 @@ set(headers
 	include/utils/type_name.h
 	include/API.h
 	include/FullAPI.h
-	include/GFxArray.h
-	include/GFxDisplayObject.h
 	include/GFxMoviePatcher.h
-	include/GFxObject.h
 	include/Hooks.h
 	include/pch.h
 	include/Plugin.h
