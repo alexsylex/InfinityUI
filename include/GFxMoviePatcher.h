@@ -15,37 +15,16 @@ namespace IUI
 
 	private:
 
-		std::string_view GetContextMovieUrl() const { return movieView->GetMovieDef()->GetFileURL(); }
-
-		std::string_view GetContextMovieDir() const
-		{
-			std::string_view movieUrl = GetContextMovieUrl();
-			return movieUrl.substr(0, movieUrl.rfind('/') + 1);
-		}
-
-		std::string_view GetContextMovieFileName() const
-		{
-			std::string_view movieUrl = GetContextMovieUrl();
-			return movieUrl.substr(movieUrl.rfind('/') + 1);
-		}
-
-		std::string_view GetContextMovieBasename() const
-		{
-			std::string_view movieFilename = GetContextMovieFileName();
-			return movieFilename.substr(0, movieFilename.find('.'));
-		}
-
-		std::string GetPatchedMemberPath(const std::string& a_movieFile) const
+		std::string GetPatchedMemberPath(const std::filesystem::path& a_movieFilePath) const
 		{
 			std::string memberPath;
 
-			std::size_t movieFilenameEnd = a_movieFile.rfind(".swf");
-			if (movieFilenameEnd != std::string::npos) 
-			{
-				std::size_t movieFilenameStart = a_movieFile.find("\\") + 1;
-				std::size_t movieFilenameLen = movieFilenameEnd - movieFilenameStart;
+			std::string movieFilePath = std::filesystem::relative(a_movieFilePath, startPath).string().c_str();
 
-				memberPath = a_movieFile.substr(movieFilenameStart, movieFilenameLen);
+			std::size_t movieFilenameLen = movieFilePath.rfind(".swf");
+			if (movieFilenameLen != std::string::npos) 
+			{
+				memberPath = movieFilePath.substr(0, movieFilenameLen);
 
 				std::replace(memberPath.begin(), memberPath.end(), '\\', '.');
 			}
@@ -53,39 +32,36 @@ namespace IUI
 			return memberPath;
 		}
 
-		std::string GetPatchedMemberName(const std::string& a_movieFile) const
+		std::string GetPatchedMemberName(const std::string_view& a_memberPath) const
 		{
-			std::string memberName;
+			std::size_t dotPos = a_memberPath.rfind('.');
 
-			std::size_t movieFilenameEnd = a_movieFile.rfind(".swf");
-			if (movieFilenameEnd != std::string::npos) 
-			{
-				std::size_t backslashPos = a_movieFile.rfind("\\");
+			std::size_t memberNameStart = dotPos != std::string::npos ? dotPos + 1 : 0;
+			std::size_t memberNameLen = a_memberPath.size() - memberNameStart;
 
-				std::size_t movieFilenameStart = backslashPos != std::string::npos ? backslashPos + 1 : 0;
-				std::size_t movieFilenameLen = movieFilenameEnd - movieFilenameStart;
-
-				memberName = a_movieFile.substr(movieFilenameStart, movieFilenameLen);
-			}
-
-			return memberName;
+			return a_memberPath.substr(memberNameStart, memberNameLen).data();
 		}
 
-		std::string GetPatchedMemberParentPath(const std::string& a_movieFile) const
+		std::string GetPatchedMemberParentPath(const std::string_view& a_memberPath) const
 		{
-			std::string memberPath = GetPatchedMemberPath(a_movieFile);
+			std::size_t dotPos = a_memberPath.rfind(".");
 
-			std::size_t dotPos = memberPath.rfind(".");
-
-			return dotPos != std::string::npos ? memberPath.substr(0, dotPos) : "_root";
+			return std::string(dotPos != std::string_view::npos ? a_memberPath.substr(0, dotPos) : "_root");
 		}
 
-		void CreateMemberFrom(GFxDisplayObject& a_parent, const std::string& a_movieFile) const;
+		void CreateMemberFrom(const std::string_view& a_memberName, GFxDisplayObject& a_parent, const std::string& a_patchRelativePath) const;
 
-		void ReplaceMemberWith(GFxDisplayObject& a_originalMember, GFxDisplayObject& a_parent, const std::string& a_movieFile) const;
+		void ReplaceMemberWith(const std::string_view& a_memberName, GFxDisplayObject& a_originalMember,
+							   GFxDisplayObject& a_parent, const std::string& a_patchRelativePath) const;
 
-		void AbortReplaceMemberWith(RE::GFxValue& a_originalMember, const std::string& a_movieFile) const;
+		void AbortReplaceMemberWith(RE::GFxValue& a_originalMember, const std::string& a_patchRelativePath) const;
 
 		RE::GFxMovieView* movieView;
+		const std::string_view movieViewUrl = movieView->GetMovieDef()->GetFileURL();
+		const std::string_view movieViewDir = movieViewUrl.substr(0, movieViewUrl.rfind('/') + 1);
+		const std::string_view movieViewFileName = movieViewUrl.substr(movieViewUrl.rfind('/') + 1);
+		const std::string_view movieViewBasename = movieViewFileName.substr(0, movieViewFileName.find('.'));
+
+		const std::filesystem::path startPath = std::filesystem::current_path().append("Data\\Interface\\InfinityUI").append(movieViewBasename);
 	};
 }

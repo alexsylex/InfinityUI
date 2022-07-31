@@ -46,9 +46,9 @@ public:
 		Invoke("swapDepths", a_depth);
 	}
 
-	void LoadMovie(const std::string_view& a_swfPath)
+	void LoadMovie(const std::string_view& a_swfRelativePath)
 	{
-		Invoke("loadMovie", a_swfPath.data());
+		Invoke("loadMovie", a_swfRelativePath.data());
 	}
 
 	void UnloadMovie()
@@ -59,5 +59,25 @@ public:
 	void RemoveMovieClip()
 	{
 		Invoke("removeMovieClip");
+	}
+
+	RE::GPointF LocalToGlobal()
+	{
+		GFxObject pt(GetMovieView());
+
+		assert(pt.IsObject());
+
+		RE::GFxValue x = 0.0;
+		pt.SetMember("x", x);
+
+		RE::GFxValue y = 0.0;
+		pt.SetMember("y", y);
+
+		Invoke("localToGlobal", pt);
+
+		x = pt.GetMember("x");
+		y = pt.GetMember("y");
+
+		return { static_cast<float>(x.GetNumber()), static_cast<float>(y.GetNumber()) };
 	}
 };

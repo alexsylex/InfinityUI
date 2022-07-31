@@ -110,7 +110,7 @@ set(headers
 	include/utils/GFxDisplayObject.h
 	include/utils/GFxFunction.h
 	include/utils/GFxObject.h
-	include/utils/GFxVisitors.h
+	include/utils/GFxLoggers.h
 	include/utils/INISettingCollection.h
 	include/utils/Logger.h
 	include/utils/Setting.h
@@ -126,7 +126,6 @@ set(headers
 
 set(sources
 	source/RE/G/GFxValue.cpp
-	source/utils/GFxVisitors.cpp
 	source/utils/INISettingCollection.cpp
 	source/utils/Logger.cpp
 	source/GFxMoviePatcher.cpp
