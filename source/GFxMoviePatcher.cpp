@@ -4,6 +4,8 @@
 
 namespace IUI
 {
+	GFxMemberLogger<logger::level::trace> g_memberLoggerTrace;
+
 	GFxMoviePatcher::GFxMoviePatcher(RE::GFxMovieView* a_movieView)
 	:	movieView{ a_movieView }
 	{
@@ -20,9 +22,11 @@ namespace IUI
 			movieViewPath.append("Exported");
 		}
 
+		logger::trace("{} path detected at: {}", movieViewBasename, movieViewPath.string());
+
 		if (std::filesystem::exists(startPath))
 		{
-			logger::debug("The path \"{}\" exists, loading existing patches...", startPath.string().c_str());
+			logger::debug("The path \"{}\" exists, loading existing patches...", startPath.string());
 
 			// Actions before we start loading movieclip patches
 			API::DispatchMessage(API::StartLoadMessage{ movieView, movieViewUrl });
@@ -47,7 +51,9 @@ namespace IUI
 				}
 				else if (currentPath.extension() == ".swf")
 				{
-					std::string patchRelativePath = std::filesystem::relative(currentPath, movieViewPath).string().c_str();
+					std::string patchRelativePath = currentPath.lexically_relative(movieViewPath).string();
+
+					logger::debug("Relative path is \"{}\"", patchRelativePath);
 
 					std::string memberPath = GetPatchedMemberPath(currentPath);
 
@@ -57,13 +63,15 @@ namespace IUI
 						RE::GFxValue parentValue;
 						if (movieView->GetVariable(&parentValue, parentPath.c_str()))
 						{
-							if (parentValue.IsDisplayObject()) 
+							if (parentValue.IsDisplayObject())
 							{
 								GFxDisplayObject parent = parentValue;
 
 								if (!memberPath.empty())
 								{
-									logger::debug("Patch found at \"{}\"", currentPath.string().c_str());
+									std::string currentPathStr = currentPath.string();
+
+									logger::debug("Patch found at \"{}\"", currentPathStr);
 
 									std::string memberName = GetPatchedMemberName(memberPath);
 
@@ -78,7 +86,7 @@ namespace IUI
 
 											loadCount++;
 										}
-										else 
+										else
 										{
 											AbortReplaceMemberWith(memberValue, patchRelativePath);
 										}
@@ -114,35 +122,33 @@ namespace IUI
 		logger::debug("");
 	}
 
-	void GFxMoviePatcher::CreateMemberFrom(const std::string_view& a_memberName, GFxDisplayObject& a_parent, const std::string& a_patchRelativePath) const
+	void GFxMoviePatcher::CreateMemberFrom(const std::string& a_memberName, GFxDisplayObject& a_parent, const std::string& a_patchRelativePath) const
 	{
-		GFxMemberLogger<logger::level::trace> memberLogger;
+		logger::trace("Before loading movieclip, relative path is {}", a_patchRelativePath);
 
 		GFxDisplayObject newDisplayObject = a_parent.CreateEmptyMovieClip(a_memberName, a_parent.GetNextHighestDepth());
 		newDisplayObject.LoadMovie(a_patchRelativePath);
 
-		logger::trace("After loading MovieClip");
 		logger::trace("");
-		memberLogger.LogMembersOf(a_parent);
-		memberLogger.LogMembersOf(newDisplayObject);
+		g_memberLoggerTrace.LogMembersOf(a_parent);
+		g_memberLoggerTrace.LogMembersOf(newDisplayObject);
 		logger::trace("");
 
 		// Actions after loading the movieclip
 		API::DispatchMessage(API::PostPatchMessage{ movieView, movieViewUrl, newDisplayObject });
 	}
 
-	void GFxMoviePatcher::ReplaceMemberWith(const std::string_view& a_memberName, GFxDisplayObject& a_originalMember,
+	void GFxMoviePatcher::ReplaceMemberWith(const std::string& a_memberName, GFxDisplayObject& a_originalMember,
 											GFxDisplayObject& a_parent, const std::string& a_patchRelativePath) const
 	{
-		GFxMemberLogger<logger::level::trace> memberLogger;
+		logger::trace("Before removing movieclip, relative path is: {}", a_patchRelativePath);
 
 		// Last chance to retrieve info before removing the movieclip
 		API::DispatchMessage(API::PreReplaceMessage{ movieView, movieViewUrl, a_originalMember });
 
-		logger::trace("Before removing MovieClip");
 		logger::trace("");
-		memberLogger.LogMembersOf(a_parent);
-		memberLogger.LogMembersOf(a_originalMember);
+		g_memberLoggerTrace.LogMembersOf(a_parent);
+		g_memberLoggerTrace.LogMembersOf(a_originalMember);
 		logger::trace("");
 
 		// MovieClip.removeMovieClip() does not remove a movie clip assigned
@@ -156,8 +162,10 @@ namespace IUI
 
 		logger::trace("After removing MovieClip");
 		logger::trace("");
-		memberLogger.LogMembersOf(a_parent);
+		g_memberLoggerTrace.LogMembersOf(a_parent);
 		logger::trace("");
+
+		logger::trace("After removing movieclip, relative path is: {}", a_patchRelativePath);
 
 		CreateMemberFrom(a_memberName, a_parent, a_patchRelativePath);
 	}

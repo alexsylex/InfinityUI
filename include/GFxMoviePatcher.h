@@ -3,6 +3,8 @@
 #include "FullAPI.h"
 #include "utils/GFxDisplayObject.h"
 
+#include "utils/Logger.h"
+
 namespace IUI
 {
 	class GFxMoviePatcher
@@ -19,7 +21,11 @@ namespace IUI
 		{
 			std::string memberPath;
 
-			std::string movieFilePath = std::filesystem::relative(a_movieFilePath, startPath).string().c_str();
+			std::filesystem::path relativePath = std::filesystem::relative(a_movieFilePath, startPath);
+
+			std::string movieFilePath = relativePath.string().c_str();
+
+			logger::trace("Relative path to SWF: {}", movieFilePath);
 
 			std::size_t movieFilenameLen = movieFilePath.rfind(".swf");
 			if (movieFilenameLen != std::string::npos) 
@@ -32,7 +38,7 @@ namespace IUI
 			return memberPath;
 		}
 
-		std::string GetPatchedMemberName(const std::string_view& a_memberPath) const
+		std::string GetPatchedMemberName(const std::string& a_memberPath) const
 		{
 			std::size_t dotPos = a_memberPath.rfind('.');
 
@@ -42,16 +48,16 @@ namespace IUI
 			return a_memberPath.substr(memberNameStart, memberNameLen).data();
 		}
 
-		std::string GetPatchedMemberParentPath(const std::string_view& a_memberPath) const
+		std::string GetPatchedMemberParentPath(const std::string& a_memberPath) const
 		{
 			std::size_t dotPos = a_memberPath.rfind(".");
 
-			return std::string(dotPos != std::string_view::npos ? a_memberPath.substr(0, dotPos) : "_root");
+			return std::string(dotPos != std::string::npos ? a_memberPath.substr(0, dotPos) : "_root");
 		}
 
-		void CreateMemberFrom(const std::string_view& a_memberName, GFxDisplayObject& a_parent, const std::string& a_patchRelativePath) const;
+		void CreateMemberFrom(const std::string& a_memberName, GFxDisplayObject& a_parent, const std::string& a_patchRelativePath) const;
 
-		void ReplaceMemberWith(const std::string_view& a_memberName, GFxDisplayObject& a_originalMember,
+		void ReplaceMemberWith(const std::string& a_memberName, GFxDisplayObject& a_originalMember,
 							   GFxDisplayObject& a_parent, const std::string& a_patchRelativePath) const;
 
 		void AbortReplaceMemberWith(RE::GFxValue& a_originalMember, const std::string& a_patchRelativePath) const;

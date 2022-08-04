@@ -5,6 +5,19 @@
 
 class GFxObject : public RE::GFxValue
 {
+protected:
+
+	template <typename... Args>
+	GFxObject(RE::GFxMovieView* a_movieView, const char* a_className, Args&&... args)
+	{
+		std::array<RE::GFxValue, sizeof...(Args)> gfxArgs{ std::forward<Args>(args)... };
+
+		a_movieView->CreateObject(this, a_className, sizeof...(Args) ? &gfxArgs[0] : nullptr, sizeof...(Args));
+
+		assert(GetMovieView() == a_movieView);
+		assert(IsObject());
+	}
+
 public:
 
 	static GFxObject GetFrom(RE::GFxMovieView* a_movieView, const std::string_view& a_pathToObject)
@@ -29,17 +42,6 @@ public:
 		assert(IsObject());
 	}
 
-	template <typename... Args>
-	GFxObject(RE::GFxMovieView* a_movieView, const std::string_view& a_className, Args&&... args)
-	{
-		std::array<RE::GFxValue, sizeof...(Args)> gfxArgs{ std::forward<Args>(args)... };
-
-		a_movieView->CreateObject(this, a_className.data(), sizeof...(Args) ? &gfxArgs[0] : nullptr, sizeof...(Args));
-
-		assert(GetMovieView() == a_movieView);
-		assert(IsObject());
-	}
-
 	GFxObject(const RE::GFxValue& a_value)
 	{
 		*static_cast<RE::GFxValue*>(this) = a_value;
@@ -58,7 +60,7 @@ public:
 		RE::GFxValue::GetMember(a_memberName.data(), &value);
 		return value;
 	}
-
+	 
 	bool SetMember(const std::string_view& a_memberName, const RE::GFxValue& a_value)
 	{
 		return RE::GFxValue::SetMember(a_memberName.data(), a_value);
@@ -78,7 +80,14 @@ public:
 	{
 		std::array<RE::GFxValue, sizeof...(Args)> gfxArgs{ std::forward<Args>(args)... };
 
-		return RE::GFxValue::Invoke(a_functionName.data(), a_result,
-									sizeof...(Args) ? &gfxArgs[0] : nullptr, sizeof...(Args));
+		if (RE::GFxValue::Invoke(a_functionName.data(), a_result,
+								 sizeof...(Args) ? &gfxArgs[0] : nullptr, sizeof...(Args)))
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
 	}
 };

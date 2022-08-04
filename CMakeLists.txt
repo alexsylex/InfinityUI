@@ -13,7 +13,7 @@ set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "")
 
 project(
 	InfinityUI
-	VERSION 1.0.0
+	VERSION 0.2.0
 	LANGUAGES CXX
 )
 

@@ -19,11 +19,6 @@ public:
 		return mc;
 	}
 
-	GFxDisplayObject CreateEmptyMovieClip(const std::string_view& a_name)
-	{
-		return CreateEmptyMovieClip(a_name, GetNextHighestDepth());
-	}
-
 	GFxDisplayObject AttachMovie(const std::string_view& a_className, const std::string_view& a_name, std::int32_t a_depth)
 	{
 		RE::GFxValue mc;
