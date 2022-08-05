@@ -21,14 +21,12 @@ namespace IUI
 		{
 			std::string memberPath;
 
-			std::filesystem::path relativePath = std::filesystem::relative(a_movieFilePath, startPath);
-
-			std::string movieFilePath = relativePath.string().c_str();
+			std::string movieFilePath = a_movieFilePath.lexically_relative(startPath).string();
 
 			logger::trace("Relative path to SWF: {}", movieFilePath);
 
 			std::size_t movieFilenameLen = movieFilePath.rfind(".swf");
-			if (movieFilenameLen != std::string::npos) 
+			if (movieFilenameLen != std::string::npos)
 			{
 				memberPath = movieFilePath.substr(0, movieFilenameLen);
 
