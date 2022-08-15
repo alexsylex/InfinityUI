@@ -4,15 +4,12 @@
 
 #include "RE/B/BSCoreTypes.h"
 
-namespace IUI
+namespace hooks
 {
 	class BSScaleformManager
 	{
-#if BUILD_SE
-		static constinit inline REL::ID LoadMovieId{ 80302 };
-#else
-		static constinit inline REL::ID LoadMovieId{ 0 };
-#endif
+		static constexpr REL::RelocationID LoadMovieId = RELOCATION_ID(80302, 82325);
+
 	public:
 
 		static inline REL::Relocation<bool (*)(const RE::BSScaleformManager*, RE::IMenu*,
@@ -22,25 +19,21 @@ namespace IUI
 
 	class GFxMovieView
 	{
-#if BUILD_SE
-		static constinit inline REL::ID InvokeArgsId{ 80546 };
-#else
-		static constinit inline REL::ID InvokeArgsId{ 0 };
-#endif
 	public:
 
 		static inline REL::Relocation<const char* (*)(RE::GFxMovieView*, const char*, const char*, va_list)>
-			InvokeArgs{ InvokeArgsId };
+			InvokeArgs;
 	};
 
 	void PatchGFxMovie(RE::GFxMovieView* a_movieView, float a_deltaT, std::uint32_t a_frameCatchUpCount);
 	void InitExtensionsAndNotify(RE::GFxMovieView* a_movieView, const char* a_methodName, const char* a_argFmt, va_list args);
 
-	static inline void InstallHooks()
+	static inline void Install()
 	{
 		// BSScaleformManager::LoadMovie call to movieView->Advance(0.0F, 2)
 		{
-			static std::uintptr_t hookedAddress = BSScaleformManager::LoadMovie.address() + 0x39B;
+			static std::uint64_t hookedFunctionOffset = REL::Module::IsSE() ? 0x39B : 0x399;
+			static std::uintptr_t hookedAddress = BSScaleformManager::LoadMovie.address() + hookedFunctionOffset;
 
 			struct HookCode : Xbyak::CodeGenerator
 			{
@@ -63,7 +56,8 @@ namespace IUI
 
 		// BSScaleformManager::LoadMovie call to movieView->InvokeArgs("_root.InitExtensions", nullptr, nullptr)
 		{
-			static std::uintptr_t hookedAddress = BSScaleformManager::LoadMovie.address() + 0x3C2;
+			static std::uint64_t hookedFunctionOffset = REL::Module::IsSE() ? 0x3C2 : 0x3C0;
+			static std::uintptr_t hookedAddress = BSScaleformManager::LoadMovie.address() + hookedFunctionOffset;
 
 			struct HookCode : Xbyak::CodeGenerator
 			{
@@ -81,7 +75,7 @@ namespace IUI
 				}
 			};
 
-			utils::WriteBranchTrampoline<5>(hookedAddress, HookCode());
+			GFxMovieView::InvokeArgs = utils::WriteBranchTrampoline<5>(hookedAddress, HookCode());
 		}
 	}
 }

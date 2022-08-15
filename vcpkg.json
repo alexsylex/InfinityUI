@@ -11,6 +11,8 @@
         "rsm-binary-io",
         "span-lite",
         "spdlog",
-        "xbyak"
+        "xbyak",
+        "tsl-ordered-map",
+        "commonlibsse-ng-flatrim"
     ]
 }

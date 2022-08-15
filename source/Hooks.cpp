@@ -2,13 +2,13 @@
 
 #include "GFxMoviePatcher.h"
 
-namespace IUI
+namespace hooks
 {
 	void PatchGFxMovie(RE::GFxMovieView* a_movieView, float a_deltaT, std::uint32_t a_frameCatchUpCount)
 	{
 		a_movieView->Advance(a_deltaT, a_frameCatchUpCount);
 
-		GFxMoviePatcher(a_movieView).LoadAvailablePatches();
+		IUI::GFxMoviePatcher(a_movieView).LoadAvailablePatches();
 	}
 
 	void InitExtensionsAndNotify(RE::GFxMovieView* a_movieView, const char* a_methodName, const char* a_argFmt, va_list args)
