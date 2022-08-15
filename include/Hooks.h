@@ -32,8 +32,7 @@ namespace hooks
 	{
 		// BSScaleformManager::LoadMovie call to movieView->Advance(0.0F, 2)
 		{
-			static std::uint64_t hookedFunctionOffset = REL::Module::IsSE() ? 0x39B : 0x399;
-			static std::uintptr_t hookedAddress = BSScaleformManager::LoadMovie.address() + hookedFunctionOffset;
+			static std::uintptr_t hookedAddress = BSScaleformManager::LoadMovie.address() + (REL::Module::IsSE() ? 0x39B : 0x399);
 
 			struct HookCode : Xbyak::CodeGenerator
 			{
@@ -56,8 +55,7 @@ namespace hooks
 
 		// BSScaleformManager::LoadMovie call to movieView->InvokeArgs("_root.InitExtensions", nullptr, nullptr)
 		{
-			static std::uint64_t hookedFunctionOffset = REL::Module::IsSE() ? 0x3C2 : 0x3C0;
-			static std::uintptr_t hookedAddress = BSScaleformManager::LoadMovie.address() + hookedFunctionOffset;
+			static std::uintptr_t hookedAddress = BSScaleformManager::LoadMovie.address() + (REL::Module::IsSE() ? 0x3C2 : 0x3C0);
 
 			struct HookCode : Xbyak::CodeGenerator
 			{
