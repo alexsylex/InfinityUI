@@ -16,7 +16,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 		return false;
 	}
 
-	logger::info("Loading {} {}...", plugin->GetName(), plugin->GetVersion());
+	logger::info("Loading {} {}...", plugin->GetName(), plugin->GetVersion()); 
 
 	SKSE::Init(a_skse);
 
