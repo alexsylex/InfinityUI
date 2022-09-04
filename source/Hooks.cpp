@@ -15,8 +15,6 @@ namespace hooks
 	{
 		GFxMovieView::InvokeArgs(a_movieView, a_methodName, a_argFmt, args);
 
-		a_movieView->Advance(0.0F);
-
 		IUI::API::DispatchMessage(IUI::API::PostInitExtensionsMessage{ a_movieView, a_movieView->GetMovieDef()->GetFileURL() });
 	}
 }
