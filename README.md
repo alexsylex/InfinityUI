@@ -93,4 +93,5 @@ Also, all the patrons that made it possible, with special mention to:
 You guys are the best!
 
 Nexus Mods: <https://www.nexusmods.com/skyrimspecialedition/mods/74483>
+
 Source Code: <https://github.com/alexsylex/InfinityUI>
