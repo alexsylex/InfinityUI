@@ -1,8 +1,6 @@
----
-Title: README
----
-![Infinity UI](https://staticdelivery.nexusmods.com/mods/1704/images/74483/74483-1662064365-966032174.png)
-![Description](https://i.imgur.com/oWcbHNI.png)
+# ![Infinity UI](./repo/infinityui.webp)
+
+![Description](./repo/description.png)
 
 Infinity UI is a framework that allows to add or replace individual elements in any UI menu, be those menus vanilla or added by mods.
 
@@ -16,25 +14,25 @@ All of this also means that it becomes possible to re-skin individual elements o
 
 If you read up to this point, you may be interested on giving it a try in your mod list.  So... back to Skyrim again?
 
-![Requirements](https://i.imgur.com/oqXplux.png)
+![Requirements](./repo/requirements.png)
 
 Check the list in the Requirements dropdown on the Nexus mod page. **Not complying to those will almost surely result in CTD.**
 
-![Installation](https://i.imgur.com/nzwQKlA.png)
+![Installation](./repo/installation.png)
 
 Use a mod manager of your choice and install it as any other mod. For manual installation, copy the contents of the .RAR file into the Data folder under your Skyrim installation path.
 
-![Compatibility](https://i.imgur.com/1VvACtk.png)
+![Compatibility](./repo/compatibility.png)
 
 This mod is compatible with **any** mod created, as of today.
 
 **Skyrim VR version soon.**
 
-![Instructions for Users](https://i.imgur.com/riKpUsk.png)
+![Instructions for Users](./repo/user-instructions.png)
 
 Install this plugin. Follow the instructions provided by the UI-mod authors in their pages.
 
-![Instructions for Modders](https://i.imgur.com/qBC5KT3.png)
+![Instructions for Modders](./repo/modder-instructions.png)
 
 Create a folder named "InfinityUI" in "Data/Interface". This will be the starting path to search any menu modification.
 
@@ -46,12 +44,12 @@ Use Adobe Flash CS6 to build the SWF file that will be the patch. Copy the SWF f
 
 If the file name matches the one of an existing child in the menu, instead of creating a new one, the existing one will be replaced. For example, to replace the compass in the HUD menu, first we need to know the path that we need to create. Opening the hudmenu.fla from the [SkyrimUI SDK Repo](https://github.com/Mardoxx/skyrimui) we can get it:
 
-![GIF](https://i.imgur.com/wCsJvTj.gif)
+![GIF](./repo/flash.gif)
 
 The compass element is named Compass, so we name the SWF file "Compass.swf".
 The path is HUDMovieBaseInstance -> CompassShoutMeterHolder -> Compass, so the resulting folder-file structure is the following:
 
-![Folder structure](https://imgur.com/MThwZk6.png)
+![Folder structure](./repo/folder-structure.png)
 
 *Note: Logically, when replacing, any MovieClip reference to the old UI element has to be reassigned to the new element, because the old one does not exist then. Check the ActionScript code of the menu to see where the MovieClip that is the target UI element or its children are referenced.
 
@@ -61,7 +59,7 @@ In the Files section you can find the API for this framework. This API will send
 
 For the moment, the API is for C++ only. In future updates I will add more functionalities, such as inspecting members of UI elements from your code.
 
-![Credits](https://i.imgur.com/yzwWtDg.png)
+![Credits](./repo/credits.png)
 
 - [distar66](https://www.nexusmods.com/skyrimspecialedition/users/44417112) for making the call that finally motivated me to start learning RE and get into modding
 - [Fludgyduff](https://www.nexusmods.com/skyrimspecialedition/users/5687342) (Ryan) for his invaluable SSE RE library [CommonLibSSE](https://github.com/Ryan-rsm-McKenzie/CommonLibSSE), that set the ground for others
@@ -94,4 +92,5 @@ Also, all the patrons that made it possible, with special mention to:
 
 You guys are the best!
 
-[Nexus Mods Link](https://www.nexusmods.com/skyrimspecialedition/mods/74483)
+Nexus Mods: <https://www.nexusmods.com/skyrimspecialedition/mods/74483>
+Source Code: <https://github.com/alexsylex/InfinityUI>
