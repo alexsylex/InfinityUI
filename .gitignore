@@ -2,3 +2,5 @@ build/
 .vs/
 x64/
 #extern/
+.vscode/*
+.markdownlint.yaml
