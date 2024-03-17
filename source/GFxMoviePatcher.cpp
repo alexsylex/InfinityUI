@@ -1,35 +1,32 @@
 #include "GFxMoviePatcher.h"
 
-#include "utils/GFxLoggers.h"
+#include "GFxDisplayObject.h"
 
 namespace IUI
 {
-	GFxMemberLogger<logger::level::trace> g_memberLoggerTrace;
+	//std::unordered_map<RE::GFxMovieRoot*, GFxMoviePatcher> g_moviePatchersList;
 
-	GFxMoviePatcher::GFxMoviePatcher(RE::GFxMovieView* a_movieView)
-	:	movieView{ a_movieView }
+	GFxMoviePatcher::GFxMoviePatcher(RE::IMenu* a_menu, RE::GFxMovieRoot* a_movieRoot)
+	:	menu{ a_menu }, movieRoot{ a_movieRoot }
 	{
-		logger::debug("Detected GFx movie load from {}", movieViewUrl);
+		const std::string_view movieRootFileDir = movieRootFileUrl.substr(0, movieRootFileUrl.rfind('/') + 1);
+		if (movieRootFileDir.find("Interface/Exported/") != std::string_view::npos)
+		{
+			movieRootFilePath.append("Exported");
+		}
+		logger::trace("Detected {} movie load from: {}", movieRootFileBasename, movieRootFilePath.string());
 	}
 
-	void GFxMoviePatcher::LoadAvailablePatches() const&&
+	int GFxMoviePatcher::LoadInstancePatches()
 	{
 		int loadCount = 0;
 
-		std::filesystem::path movieViewPath = std::filesystem::current_path().append("Data\\Interface");
-		if (movieViewDir.find("Interface/Exported/") != std::string_view::npos)
-		{
-			movieViewPath.append("Exported");
-		}
-
-		logger::trace("{} path detected at: {}", movieViewBasename, movieViewPath.string());
-
 		if (std::filesystem::exists(startPath))
 		{
-			logger::debug("The path \"{}\" exists, loading existing patches...", startPath.string());
+			logger::debug("The path \"{}\" exists, loading instance patches...", startPath.string());
 
 			// Actions before we start loading movieclip patches
-			API::DispatchMessage(API::StartLoadMessage{ movieView, movieViewUrl });
+			API::DispatchMessage(API::StartLoadInstancesMessage{ menu, movieRoot });
 
 			// Non-recursive Depth-First Search to traverse all nodes
 			// Reference: https://en.wikipedia.org/wiki/Depth-first_search
@@ -51,104 +48,100 @@ namespace IUI
 				}
 				else if (currentPath.extension() == ".swf")
 				{
-					std::string patchRelativePath = currentPath.lexically_relative(movieViewPath).string();
+					std::string patchRelativePath = currentPath.lexically_relative(movieRootFilePath).string();
 
 					logger::debug("Relative path is \"{}\"", patchRelativePath);
 
-					std::string memberPath = GetPatchedMemberPath(currentPath);
+					std::string instancePath = GetInstanceASPath(startPath, currentPath);
 
-					std::string parentPath = GetPatchedMemberParentPath(memberPath);
+					std::string parentPath = GetInstanceParentASPath(instancePath);
 					if (!parentPath.empty())
 					{
-						RE::GFxValue parentValue;
-						if (movieView->GetVariable(&parentValue, parentPath.c_str()))
+						RE::GFxValue member;
+						if (movieRoot->GetVariable(&member, parentPath.c_str()))
 						{
-							if (parentValue.IsDisplayObject())
+							if (member.IsDisplayObject())
 							{
-								GFxDisplayObject parent = parentValue;
+								GFxDisplayObject parent = member;
 
-								if (!memberPath.empty())
+								if (!instancePath.empty())
 								{
 									std::string currentPathStr = currentPath.string();
 
 									logger::debug("Patch found at \"{}\"", currentPathStr);
 
-									std::string memberName = GetPatchedMemberName(memberPath);
+									std::string instanceName = GetInstanceASName(instancePath);
 
-									RE::GFxValue memberValue;
-									if (movieView->GetVariable(&memberValue, memberPath.c_str()))
+									if (movieRoot->GetVariable(&member, instancePath.c_str()))
 									{
-										if (memberValue.IsDisplayObject())
+										if (member.IsDisplayObject())
 										{
-											GFxDisplayObject member = memberValue;
-
-											ReplaceMemberWith(memberName, member, parent, patchRelativePath);
-
+											GFxDisplayObject instance = member;
+											ReplaceInstance(instanceName, instance, parent, patchRelativePath);
 											loadCount++;
 										}
 										else
 										{
-											AbortReplaceMemberWith(memberValue, patchRelativePath);
+											AbortReplaceInstance(instanceName, member, patchRelativePath);
 										}
 									}
 									else 
 									{
-										CreateMemberFrom(memberName, parent, patchRelativePath);
+										AddInstance(instanceName, parent, patchRelativePath);
 										loadCount++;
 									}
 								}
 							}
 							else 
 							{
-								AbortReplaceMemberWith(parentValue, patchRelativePath);
+								std::string parentName = GetInstanceASName(parentPath);
+
+								AbortReplaceInstance(parentName, member, patchRelativePath);
 							}
 						}
 					}
 				}
 			}
 
-			// Actions after loading all movieclip patches
-			API::DispatchMessage(API::FinishLoadMessage{ movieView, movieViewUrl, loadCount });
+			// Actions after loading all movieclip instance patches
+			API::DispatchMessage(API::FinishLoadInstancesMessage{ menu, movieRoot, loadCount });
 		}
 
-		if (loadCount) 
-		{
-			logger::info("Patches loaded for {}: {}", movieViewUrl, loadCount);
-		}
-		else
-		{
-			logger::debug("Patches loaded for {}: 0", movieViewUrl);
-		}
-		logger::debug("");
+		return loadCount;
 	}
 
-	void GFxMoviePatcher::CreateMemberFrom(const std::string& a_memberName, GFxDisplayObject& a_parent, const std::string& a_patchRelativePath) const
+	void GFxMoviePatcher::AddInstance(const std::string& a_name, GFxDisplayObject& a_parent, const std::string& a_patchRelativePath)
 	{
-		logger::trace("Before loading movieclip, relative path is {}", a_patchRelativePath);
+		GFxDisplayObject newInstance = a_parent.CreateEmptyMovieClip(a_name, a_parent.GetNextHighestDepth());
 
-		GFxDisplayObject newDisplayObject = a_parent.CreateEmptyMovieClip(a_memberName, a_parent.GetNextHighestDepth());
-		newDisplayObject.LoadMovie(a_patchRelativePath);
+		logger::trace("Relative path to patch is: {}", a_patchRelativePath);
 
+		newInstance.LoadMovie(a_patchRelativePath);
+		movieRoot->Advance(0);
+
+		logger::trace("New instance loaded!");
 		logger::trace("");
-		g_memberLoggerTrace.LogMembersOf(a_parent);
-		g_memberLoggerTrace.LogMembersOf(newDisplayObject);
+		LogMembersOf(a_parent);
+		LogMembersOf(newInstance);
 		logger::trace("");
+
+		auto [movieDefImpl, spriteDef] = newInstance.GetDefs();
+
+		addedInstanceMovieDefs.push_back(movieDefImpl);
 
 		// Actions after loading the movieclip
-		API::DispatchMessage(API::PostPatchMessage{ movieView, movieViewUrl, newDisplayObject });
+		API::DispatchMessage(API::PostPatchInstanceMessage{ menu, movieRoot, newInstance, movieDefImpl, spriteDef });
 	}
 
-	void GFxMoviePatcher::ReplaceMemberWith(const std::string& a_memberName, GFxDisplayObject& a_originalMember,
-											GFxDisplayObject& a_parent, const std::string& a_patchRelativePath) const
+	void GFxMoviePatcher::ReplaceInstance(const std::string& a_name, GFxDisplayObject& a_originalInstance,
+											GFxDisplayObject& a_parent, const std::string& a_patchRelativePath)
 	{
-		logger::trace("Before removing movieclip, relative path is: {}", a_patchRelativePath);
-
 		// Last chance to retrieve info before removing the movieclip
-		API::DispatchMessage(API::PreReplaceMessage{ movieView, movieViewUrl, a_originalMember });
+		API::DispatchMessage(API::PreReplaceInstanceMessage{ menu, movieRoot, a_originalInstance });
 
 		logger::trace("");
-		g_memberLoggerTrace.LogMembersOf(a_parent);
-		g_memberLoggerTrace.LogMembersOf(a_originalMember);
+		LogMembersOf(a_parent);
+		LogMembersOf(a_originalInstance);
 		logger::trace("");
 
 		// MovieClip.removeMovieClip() does not remove a movie clip assigned
@@ -157,24 +150,26 @@ namespace IUI
 		// that is assigned to a negative depth value, first use the MovieClip.swapDepths()
 		// method to move the movie clip to a positive depth value.
 		// Reference: http://homepage.divms.uiowa.edu/~slonnegr/flash/ActionScript2Reference.pdf#page=917
-		a_originalMember.SwapDepths(1);
-		a_originalMember.RemoveMovieClip();
+		a_originalInstance.SwapDepths(1);
+		movieRoot->Advance(0);
 
-		logger::trace("After removing MovieClip");
+		a_originalInstance.RemoveMovieClip();
+		movieRoot->Advance(0);
+
+		logger::trace("Original instance removed!");
 		logger::trace("");
-		g_memberLoggerTrace.LogMembersOf(a_parent);
+		LogMembersOf(a_parent);
 		logger::trace("");
 
-		logger::trace("After removing movieclip, relative path is: {}", a_patchRelativePath);
-
-		CreateMemberFrom(a_memberName, a_parent, a_patchRelativePath);
+		AddInstance(a_name, a_parent, a_patchRelativePath);
 	}
 
-	void GFxMoviePatcher::AbortReplaceMemberWith(RE::GFxValue& a_originalMember, const std::string& a_patchRelativePath) const
+	void GFxMoviePatcher::AbortReplaceInstance(const std::string& a_name, RE::GFxValue& a_instance,
+											   const std::string& a_patchRelativePath) const
 	{
 		logger::warn("{} exists in the movie, but it is not a DisplayObject. Aborting replacement for {}", 
-					 a_originalMember.ToString(), a_patchRelativePath);
+					 a_name, a_patchRelativePath);
 
-		API::DispatchMessage(API::AbortPatchMessage{ movieView, movieViewUrl, a_originalMember });
+		API::DispatchMessage(API::AbortPatchInstanceMessage{ menu, movieRoot, a_instance });
 	}
 }

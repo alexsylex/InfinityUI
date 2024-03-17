@@ -2,6 +2,8 @@
 
 #include "API.h"
 
+#undef DispatchMessage
+
 namespace IUI::API
 {
 	template <typename MessageT> requires valid_message<MessageT>

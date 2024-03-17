@@ -8,17 +8,12 @@ namespace logger = SKSE::log;
 
 namespace settings
 {
-	struct Collection
-	{
-		struct Debug
-		{
-			logger::level logLevel;
-		};
-
-		Debug debug;
-	};
-
 	void Init(const std::string& a_iniFileName);
-}
 
-inline settings::Collection g_settings;
+	// Default values
+
+	namespace debug
+	{
+		inline logger::level logLevel = logger::level::err;
+	}
+}

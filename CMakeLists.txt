@@ -6,10 +6,9 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
 	InfinityUI
-	VERSION 1.0
+	VERSION 2.0.2
 	LANGUAGES CXX
 )
-
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -22,36 +21,8 @@ configure_file(
 	@ONLY
 )
 
-set(headers
-	include/RE/G/GFxValue.h
-	include/utils/GFxArray.h
-	include/utils/GFxDisplayObject.h
-	include/utils/GFxFunction.h
-	include/utils/GFxObject.h
-	include/utils/GFxLoggers.h
-	include/utils/INISettingCollection.h
-	include/utils/Logger.h
-	include/utils/Setting.h
-	include/utils/Trampoline.h
-	include/utils/type_name.h
-	include/API.h
-	include/FullAPI.h
-	include/GFxMoviePatcher.h
-	include/Hooks.h
-	include/pch.h
-	include/Settings.h
-)
-
-set(sources
-	source/RE/G/GFxValue.cpp
-	source/utils/INISettingCollection.cpp
-	source/utils/Logger.cpp
-	source/GFxMoviePatcher.cpp
-	source/Hooks.cpp
-	source/main.cpp
-	source/pch.cpp
-	source/Settings.cpp
-)
+file(GLOB_RECURSE headers "include/*.h")
+file(GLOB_RECURSE sources "source/*.cpp")
 
 source_group(
 	TREE
@@ -66,8 +37,8 @@ source_group(
 ########################################################################################################################
 
 find_package(CommonLibSSE CONFIG REQUIRED)
-find_package(binary_io REQUIRED CONFIG)
 find_package(spdlog REQUIRED CONFIG)
+find_package(directxtk CONFIG REQUIRED)
 
 add_commonlibsse_plugin(${PROJECT_NAME} SOURCES ${headers} ${sources})
 add_library("${PROJECT_NAME}::${PROJECT_NAME}" ALIAS "${PROJECT_NAME}")
@@ -78,11 +49,14 @@ target_include_directories(
 		${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+include_directories(${SOURCE_PATH}/extern/openvr/headers)
+
 target_link_libraries(
 	${PROJECT_NAME}
 	PRIVATE
 		CommonLibSSE::CommonLibSSE
-		spdlog::spdlog
+		spdlog::spdlog_header_only
+		Microsoft::DirectXTK
 )
 
 if (MSVC)
@@ -104,12 +78,29 @@ target_precompile_headers(
 ## Automatic plugin deployment
 ########################################################################################################################
 
-set(DEPLOYMENT_DIR "C:/Program Files (x86)/Steam/steamapps/common/Skyrim Special Edition")
-set(DEPLOYMENT_DIR_AE "C:/Program Files (x86)/Steam/steamapps/common/Skyrim Anniversary Edition")
+set(SKYRIM_SE_DIR "C:/Program Files (x86)/Steam/steamapps/common/Skyrim Special Edition")
+set(SKYRIM_VR_DIR "C:/Program Files (x86)/Steam/steamapps/common/Skyrim VR")
 
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}>
-	"${DEPLOYMENT_DIR}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
-	COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}>
-	"${DEPLOYMENT_DIR_AE}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
-)
+if ("$ENV{RUNTIME_DISABLE_FLAGS}" STREQUAL "")
+	set(COPY_SE YES)
+	set(COPY_VR YES)
+elseif ("$ENV{RUNTIME_DISABLE_FLAGS}" STREQUAL "-UENABLE_SKYRIM_VR")
+	set(COPY_SE YES)
+	set(COPY_VR NO)
+elseif ("$ENV{RUNTIME_DISABLE_FLAGS}" STREQUAL "-UENABLE_SKYRIM_SE -UENABLE_SKYRIM_AE")
+	set(COPY_SE NO)
+	set(COPY_VR YES)
+endif()
+
+if (COPY_SE)
+	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}>
+		"${SKYRIM_SE_DIR}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
+	)
+endif()
+if (COPY_VR)
+	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}>
+		"${SKYRIM_VR_DIR}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
+	)
+endif()
