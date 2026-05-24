@@ -1,10 +1,47 @@
 #include "GFxMoviePatcher.h"
 
 #include "GFxDisplayObject.h"
+#include "Settings.h"
+
+#include <algorithm>
+#include <chrono>
+#include <cctype>
+#include <sstream>
 
 namespace IUI
 {
 	//std::unordered_map<RE::GFxMovieRoot*, GFxMoviePatcher> g_moviePatchersList;
+
+	namespace
+	{
+		using Clock = std::chrono::steady_clock;
+
+		std::string NormalizePatchPath(std::string a_path)
+		{
+			std::replace(a_path.begin(), a_path.end(), '/', '\\');
+			std::transform(a_path.begin(), a_path.end(), a_path.begin(), [](unsigned char a_char) {
+				return static_cast<char>(std::tolower(a_char));
+			});
+			return a_path;
+		}
+
+		void Trim(std::string& a_text)
+		{
+			const auto start = a_text.find_first_not_of(" \t");
+			if (start == std::string::npos) {
+				a_text.clear();
+				return;
+			}
+
+			const auto end = a_text.find_last_not_of(" \t");
+			a_text = a_text.substr(start, end - start + 1);
+		}
+
+		std::uint64_t ElapsedMS(const Clock::time_point& a_start)
+		{
+			return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - a_start).count());
+		}
+	}
 
 	GFxMoviePatcher::GFxMoviePatcher(RE::IMenu* a_menu, RE::GFxMovieRoot* a_movieRoot)
 	:	menu{ a_menu }, movieRoot{ a_movieRoot }
@@ -38,10 +75,10 @@ namespace IUI
 			{
 				std::filesystem::path currentPath = stack.top();
 				stack.pop();
-		
+
 				if (std::filesystem::is_directory(currentPath))
 				{
-					for (const std::filesystem::directory_entry& childPath : std::filesystem::directory_iterator{ currentPath }) 
+					for (const std::filesystem::directory_entry& childPath : std::filesystem::directory_iterator{ currentPath })
 					{
 						stack.push(childPath);
 					}
@@ -51,6 +88,13 @@ namespace IUI
 					std::string patchRelativePath = currentPath.lexically_relative(movieRootFilePath).string();
 
 					logger::debug("Relative path is \"{}\"", patchRelativePath);
+
+					if (IsPatchDisabled(patchRelativePath)) {
+						logger::warn("Skipping disabled InfinityUI patch \"{}\"", patchRelativePath);
+						continue;
+					}
+
+					const auto patchStart = Clock::now();
 
 					std::string instancePath = GetInstanceASPath(startPath, currentPath);
 
@@ -77,28 +121,35 @@ namespace IUI
 										if (member.IsDisplayObject())
 										{
 											GFxDisplayObject instance = member;
-											ReplaceInstance(instanceName, instance, parent, patchRelativePath);
-											loadCount++;
+											if (ReplaceInstance(instanceName, instance, parent, patchRelativePath)) {
+												loadCount++;
+											}
 										}
 										else
 										{
 											AbortReplaceInstance(instanceName, member, patchRelativePath);
 										}
 									}
-									else 
+									else
 									{
-										AddInstance(instanceName, parent, patchRelativePath);
-										loadCount++;
+										if (AddInstance(instanceName, parent, patchRelativePath)) {
+											loadCount++;
+										}
 									}
 								}
 							}
-							else 
+							else
 							{
 								std::string parentName = GetInstanceASName(parentPath);
 
 								AbortReplaceInstance(parentName, member, patchRelativePath);
 							}
 						}
+					}
+
+					const auto patchElapsedMS = ElapsedMS(patchStart);
+					if (settings::patching::slowPatchWarningMS > 0 && patchElapsedMS >= settings::patching::slowPatchWarningMS) {
+						logger::warn("InfinityUI patch \"{}\" took {} ms", patchRelativePath, patchElapsedMS);
 					}
 				}
 			}
@@ -110,32 +161,69 @@ namespace IUI
 		return loadCount;
 	}
 
-	void GFxMoviePatcher::AddInstance(const std::string& a_name, GFxDisplayObject& a_parent, const std::string& a_patchRelativePath)
+	bool GFxMoviePatcher::AddInstance(const std::string& a_name, GFxDisplayObject& a_parent, const std::string& a_patchRelativePath)
 	{
 		GFxDisplayObject newInstance = a_parent.CreateEmptyMovieClip(a_name, a_parent.GetNextHighestDepth());
 
 		logger::trace("Relative path to patch is: {}", a_patchRelativePath);
 
-		newInstance.LoadMovie(a_patchRelativePath);
-		movieRoot->Advance(0);
+		if (!LoadInstanceMovie(newInstance, a_patchRelativePath)) {
+			newInstance.RemoveMovieClip();
+			return false;
+		}
 
-		logger::trace("New instance loaded!");
 		logger::trace("");
 		LogMembersOf(a_parent);
-		LogMembersOf(newInstance);
 		logger::trace("");
 
-		auto [movieDefImpl, spriteDef] = newInstance.GetDefs();
-
-		addedInstanceMovieDefs.push_back(movieDefImpl);
-
-		// Actions after loading the movieclip
-		API::DispatchMessage(API::PostPatchInstanceMessage{ menu, movieRoot, newInstance, movieDefImpl, spriteDef });
+		return true;
 	}
 
-	void GFxMoviePatcher::ReplaceInstance(const std::string& a_name, GFxDisplayObject& a_originalInstance,
+	bool GFxMoviePatcher::ReplaceInstance(const std::string& a_name, GFxDisplayObject& a_originalInstance,
 											GFxDisplayObject& a_parent, const std::string& a_patchRelativePath)
 	{
+		if (settings::patching::safeReplacement) {
+			const std::string tempName = MakeTempInstanceName(a_name);
+			GFxDisplayObject newInstance = a_parent.CreateEmptyMovieClip(tempName, a_parent.GetNextHighestDepth());
+
+			logger::trace("Relative path to patch is: {}", a_patchRelativePath);
+
+			if (!LoadInstanceMovie(newInstance, a_patchRelativePath, false)) {
+				logger::warn("Keeping original {} because replacement patch failed to load from {}", a_name, a_patchRelativePath);
+				newInstance.RemoveMovieClip();
+				AbortReplaceInstance(a_name, a_originalInstance, a_patchRelativePath);
+				return false;
+			}
+
+			// Last chance to retrieve info before removing the movieclip
+			API::DispatchMessage(API::PreReplaceInstanceMessage{ menu, movieRoot, a_originalInstance });
+
+			logger::trace("");
+			LogMembersOf(a_parent);
+			LogMembersOf(a_originalInstance);
+			logger::trace("");
+
+			a_originalInstance.SwapDepths(1);
+			movieRoot->Advance(0);
+
+			a_originalInstance.RemoveMovieClip();
+			movieRoot->Advance(0);
+
+			newInstance.SetName(a_name);
+			movieRoot->Advance(0);
+
+			auto [movieDefImpl, spriteDef] = newInstance.GetDefs();
+			API::DispatchMessage(API::PostPatchInstanceMessage{ menu, movieRoot, newInstance, movieDefImpl, spriteDef });
+
+			logger::trace("Original instance replaced!");
+			logger::trace("");
+			LogMembersOf(a_parent);
+			LogMembersOf(newInstance);
+			logger::trace("");
+
+			return true;
+		}
+
 		// Last chance to retrieve info before removing the movieclip
 		API::DispatchMessage(API::PreReplaceInstanceMessage{ menu, movieRoot, a_originalInstance });
 
@@ -161,15 +249,85 @@ namespace IUI
 		LogMembersOf(a_parent);
 		logger::trace("");
 
-		AddInstance(a_name, a_parent, a_patchRelativePath);
+		return AddInstance(a_name, a_parent, a_patchRelativePath);
 	}
 
 	void GFxMoviePatcher::AbortReplaceInstance(const std::string& a_name, RE::GFxValue& a_instance,
 											   const std::string& a_patchRelativePath) const
 	{
-		logger::warn("{} exists in the movie, but it is not a DisplayObject. Aborting replacement for {}", 
+		logger::warn("{} exists in the movie, but it is not a DisplayObject. Aborting replacement for {}",
 					 a_name, a_patchRelativePath);
 
 		API::DispatchMessage(API::AbortPatchInstanceMessage{ menu, movieRoot, a_instance });
+	}
+
+	bool GFxMoviePatcher::IsPatchDisabled(const std::string& a_patchRelativePath) const
+	{
+		const char* disabledPatchFiles = settings::patching::disabledPatchFiles;
+		if (!disabledPatchFiles || !disabledPatchFiles[0]) {
+			return false;
+		}
+
+		const std::string patchPath = NormalizePatchPath(a_patchRelativePath);
+		std::stringstream disabledList{ disabledPatchFiles };
+		std::string disabledPath;
+
+		while (std::getline(disabledList, disabledPath, ';')) {
+			std::stringstream commaList{ disabledPath };
+			std::string token;
+
+			while (std::getline(commaList, token, ',')) {
+				token = NormalizePatchPath(token);
+				Trim(token);
+
+				if (!token.empty() && patchPath.ends_with(token)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	bool GFxMoviePatcher::LoadInstanceMovie(GFxDisplayObject& a_instance, const std::string& a_patchRelativePath, bool a_dispatchPostPatch)
+	{
+		const auto loadStart = Clock::now();
+
+		if (!a_instance.LoadMovie(a_patchRelativePath)) {
+			logger::warn("loadMovie invocation failed for {}", a_patchRelativePath);
+			return false;
+		}
+
+		movieRoot->Advance(0);
+
+		const auto loadElapsedMS = ElapsedMS(loadStart);
+		if (settings::patching::slowPatchWarningMS > 0 && loadElapsedMS >= settings::patching::slowPatchWarningMS) {
+			logger::warn("loadMovie for \"{}\" took {} ms", a_patchRelativePath, loadElapsedMS);
+		}
+
+		auto [movieDefImpl, spriteDef] = a_instance.GetDefs();
+		if (!movieDefImpl || !spriteDef) {
+			logger::warn("Could not resolve loaded movie definitions for {}", a_patchRelativePath);
+			return false;
+		}
+
+		logger::trace("New instance loaded!");
+		logger::trace("");
+		LogMembersOf(a_instance);
+		logger::trace("");
+
+		addedInstanceMovieDefs.push_back(movieDefImpl);
+
+		if (a_dispatchPostPatch) {
+			// Actions after loading the movieclip
+			API::DispatchMessage(API::PostPatchInstanceMessage{ menu, movieRoot, a_instance, movieDefImpl, spriteDef });
+		}
+
+		return true;
+	}
+
+	std::string GFxMoviePatcher::MakeTempInstanceName(const std::string& a_name) const
+	{
+		return "__IUI_LoadCheck_" + a_name;
 	}
 }

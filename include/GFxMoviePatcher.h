@@ -71,12 +71,16 @@ namespace IUI
 			return std::string(dotPos != std::string::npos ? a_memberPath.substr(0, dotPos) : "_root");
 		}
 
-		void AddInstance(const std::string& a_name, GFxDisplayObject& a_parent, const std::string& a_patchRelativePath);
+		bool AddInstance(const std::string& a_name, GFxDisplayObject& a_parent, const std::string& a_patchRelativePath);
 
-		void ReplaceInstance(const std::string& a_name, GFxDisplayObject& a_originalInstance,
+		bool ReplaceInstance(const std::string& a_name, GFxDisplayObject& a_originalInstance,
 							 GFxDisplayObject& a_parent, const std::string& a_patchRelativePath);
 
 		void AbortReplaceInstance(const std::string& a_name, RE::GFxValue& a_originalInstance, const std::string& a_patchRelativePath) const;
+
+		bool IsPatchDisabled(const std::string& a_patchRelativePath) const;
+		bool LoadInstanceMovie(GFxDisplayObject& a_instance, const std::string& a_patchRelativePath, bool a_dispatchPostPatch = true);
+		std::string MakeTempInstanceName(const std::string& a_name) const;
 
 		// members
 		RE::IMenu* menu;
