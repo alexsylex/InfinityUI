@@ -4,15 +4,26 @@
 
 #include "GFxMoviePatcher.h"
 
+#include <unordered_set>
+
 namespace hooks
 {
 	void PatchGFxMovie(RE::GFxMovieRoot* a_movieRoot, float a_deltaT, std::uint32_t a_frameCatchUpCount, RE::IMenu* a_menu)
 	{
 		a_movieRoot->Advance(a_deltaT, a_frameCatchUpCount);
 
+		static thread_local std::unordered_set<RE::GFxMovieRoot*> patchingMovieRoots;
+		const auto [it, inserted] = patchingMovieRoots.insert(a_movieRoot);
+		if (!inserted) {
+			logger::warn("Skipping recursive InfinityUI patch pass for {}", a_movieRoot->GetMovieDef()->GetFileURL());
+			return;
+		}
+
 		IUI::GFxMoviePatcher moviePatcher{ a_menu, a_movieRoot };
 
 		int loadedInstancesCount = moviePatcher.LoadInstancePatches();
+
+		patchingMovieRoots.erase(it);
 
 
 		const char* movieRootFileUrl = a_movieRoot->GetMovieDef()->GetFileURL();

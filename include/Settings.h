@@ -16,4 +16,11 @@ namespace settings
 	{
 		inline logger::level logLevel = logger::level::err;
 	}
+
+	namespace patching
+	{
+		inline bool safeReplacement = true;
+		inline std::uint32_t slowPatchWarningMS = 250;
+		inline const char* disabledPatchFiles = "";
+	}
 }

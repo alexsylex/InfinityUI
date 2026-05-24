@@ -35,14 +35,19 @@ namespace IUI
 			Invoke("swapDepths", a_depth);
 		}
 
-		void LoadMovie(const std::string_view& a_swfRelativePath)
+		bool LoadMovie(const std::string_view& a_swfRelativePath)
 		{
-			Invoke("loadMovie", a_swfRelativePath.data());
+			return Invoke("loadMovie", static_cast<RE::GFxValue*>(nullptr), a_swfRelativePath.data());
 		}
 
-		void RemoveMovieClip()
+		bool RemoveMovieClip()
 		{
-			Invoke("removeMovieClip");
+			return Invoke("removeMovieClip", static_cast<RE::GFxValue*>(nullptr));
+		}
+
+		bool SetName(const std::string_view& a_name)
+		{
+			return SetMember("_name", a_name.data());
 		}
 
 		std::pair<RE::GFxMovieDefImpl*, RE::GFxSpriteDef*> GetDefs() const
